@@ -13,8 +13,8 @@ use Neos\Flow\Mvc\Dispatcher;
 use Neos\Flow\Mvc\Routing\Router;
 use Neos\Flow\Security\Context as SecurityContext;
 use TYPO3\Fluid\Core\ViewHelper\AbstractViewHelper;
-use TYPO3\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
-use TYPO3\Neos\Routing\FrontendNodeRoutePartHandler;
+use Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
+use Neos\Neos\Routing\FrontendNodeRoutePartHandler;
 
 /**
  * Loads the content of a given URL
@@ -52,7 +52,7 @@ class RequestViewHelper extends AbstractViewHelper
     protected $configurationManager;
 
     /**
-     * @Flow\InjectConfiguration(path="routing.supportEmptySegmentForDimensions", package="TYPO3.Neos")
+     * @Flow\InjectConfiguration(path="routing.supportEmptySegmentForDimensions", package="Neos.Neos")
      * @var boolean
      */
     protected $supportEmptySegmentForDimensions;
