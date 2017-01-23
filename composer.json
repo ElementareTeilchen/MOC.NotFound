@@ -1,6 +1,6 @@
 {
     "name": "moc/notfound",
-    "type": "typo3-flow-package",
+    "type": "neos-plugin",
     "description": "Neos CMS package that loads a normal editable page for displaying a 404 error",
     "keywords": [
         "404",
@@ -16,7 +16,7 @@
         }
     ],
     "require": {
-        "typo3/neos": ">=2.0"
+        "neos/neos": "^3.0"
     },
     "autoload": {
         "psr-4": {
