@@ -12,7 +12,7 @@ use Neos\Flow\Mvc\ActionRequest;
 use Neos\Flow\Mvc\Dispatcher;
 use Neos\Flow\Mvc\Routing\Router;
 use Neos\Flow\Security\Context as SecurityContext;
-use TYPO3\Fluid\Core\ViewHelper\AbstractViewHelper;
+use Neos\FluidAdaptor\Core\ViewHelper\AbstractViewHelper;
 use Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
 use Neos\Neos\Routing\FrontendNodeRoutePartHandler;
 
