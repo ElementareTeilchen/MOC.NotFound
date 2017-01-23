@@ -1,17 +1,17 @@
 <?php
 namespace MOC\NotFound\ViewHelpers;
 
-use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Configuration\ConfigurationManager;
-use TYPO3\Flow\Core\Bootstrap;
-use TYPO3\Flow\Http\Request;
-use TYPO3\Flow\Http\RequestHandler;
-use TYPO3\Flow\Http\Response;
-use TYPO3\Flow\Http\Uri;
-use TYPO3\Flow\Mvc\ActionRequest;
-use TYPO3\Flow\Mvc\Dispatcher;
-use TYPO3\Flow\Mvc\Routing\Router;
-use TYPO3\Flow\Security\Context as SecurityContext;
+use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Configuration\ConfigurationManager;
+use Neos\Flow\Core\Bootstrap;
+use Neos\Flow\Http\Request;
+use Neos\Flow\Http\RequestHandler;
+use Neos\Flow\Http\Response;
+use Neos\Flow\Http\Uri;
+use Neos\Flow\Mvc\ActionRequest;
+use Neos\Flow\Mvc\Dispatcher;
+use Neos\Flow\Mvc\Routing\Router;
+use Neos\Flow\Security\Context as SecurityContext;
 use TYPO3\Fluid\Core\ViewHelper\AbstractViewHelper;
 use TYPO3\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
 use TYPO3\Neos\Routing\FrontendNodeRoutePartHandler;
