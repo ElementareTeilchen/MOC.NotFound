@@ -14,8 +14,8 @@
 		"typo3/neos": ">=2.0"
 	},
 	"autoload": {
-		"psr-0": {
-			"MOC\\NotFound": "Classes"
+		"psr-4": {
+			"MOC\\NotFound\\": "Classes"
 		}
 	}
 }
