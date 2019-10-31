@@ -2,23 +2,17 @@
 namespace MOC\NotFound\ViewHelpers;
 
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Configuration\ConfigurationManager;
 use Neos\Flow\Core\Bootstrap;
-use Neos\Flow\Http\Request;
-use Neos\Flow\Http\RequestHandler;
-use Neos\Flow\Http\Response;
-use Neos\Flow\Http\Uri;
-use Neos\Flow\Mvc\ActionRequest;
-use Neos\Flow\Mvc\Dispatcher;
+use Neos\Flow\Http\Client\CurlEngine;
+use Neos\Flow\Http\Client\CurlEngineException;
+use Neos\Flow\Http\Helper\RequestInformationHelper;
 use Neos\Flow\Mvc\Exception\NoMatchingRouteException;
-use Neos\Flow\Mvc\Routing\Dto\RouteContext;
-use Neos\Flow\Mvc\Routing\Dto\RouteParameters;
-use Neos\Flow\Mvc\Routing\Router;
-use Neos\Flow\Security\Context as SecurityContext;
 use Neos\FluidAdaptor\Core\ViewHelper\AbstractViewHelper;
 use Neos\FluidAdaptor\Core\ViewHelper\Exception as ViewHelperException;
+use Neos\Http\Factories\ServerRequestFactory;
 use Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
 use Neos\Neos\Routing\FrontendNodeRoutePartHandler;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Loads the content of a given URL
@@ -26,40 +20,10 @@ use Neos\Neos\Routing\FrontendNodeRoutePartHandler;
 class RequestViewHelper extends AbstractViewHelper
 {
     /**
-     * @Flow\Inject
-     * @var Dispatcher
-     */
-    protected $dispatcher;
-
-    /**
      * @Flow\Inject(lazy=false)
      * @var Bootstrap
      */
     protected $bootstrap;
-
-    /**
-     * @Flow\Inject(lazy=false)
-     * @var Router
-     */
-    protected $router;
-
-    /**
-     * @Flow\Inject(lazy=false)
-     * @var SecurityContext
-     */
-    protected $securityContext;
-
-    /**
-     * @Flow\Inject
-     * @var ConfigurationManager
-     */
-    protected $configurationManager;
-
-    /**
-     * @Flow\InjectConfiguration(path="routing.supportEmptySegmentForDimensions", package="Neos.Neos")
-     * @var boolean
-     */
-    protected $supportEmptySegmentForDimensions;
 
     /**
      * @Flow\Inject
@@ -68,14 +32,16 @@ class RequestViewHelper extends AbstractViewHelper
     protected $contentDimensionPresetSource;
 
     /**
-     * Initialize this engine
-     *
-     * @return void
+     * @Flow\Inject
+     * @var ServerRequestFactory
      */
-    public function initializeObject()
-    {
-        $this->router->setRoutesConfiguration($this->configurationManager->getConfiguration(ConfigurationManager::CONFIGURATION_TYPE_ROUTES));
-    }
+    protected $serverRequestFactory;
+
+    /**
+     * @Flow\InjectConfiguration(path="routing.supportEmptySegmentForDimensions", package="Neos.Neos")
+     * @var boolean
+     */
+    protected $supportEmptySegmentForDimensions;
 
     /**
      * @return void
@@ -90,40 +56,34 @@ class RequestViewHelper extends AbstractViewHelper
 
     /**
      * @return string
-     * @throws \Exception
+     * @throws \RuntimeException
+     * @throws CurlEngineException
+     * @throws NoMatchingRouteException
      */
-    public function render()
+    public function render() : string
     {
         $path = $this->arguments['path'];
         $this->appendFirstUriPartIfValidDimension($path);
-        /** @var RequestHandler $activeRequestHandler */
-        $activeRequestHandler = $this->bootstrap->getActiveRequestHandler();
-        $parentHttpRequest = $activeRequestHandler->getHttpRequest();
-        $uri = rtrim($parentHttpRequest->getBaseUri(), '/') . '/' . $path;
-        $httpRequest = Request::create(new Uri($uri));
-        $routeContext = new RouteContext($httpRequest, RouteParameters::createEmpty());
-        try {
-            $matchingRoute = $this->router->route($routeContext);
-        } catch (NoMatchingRouteException $exception) {
-            $matchingRoute = null;
-        }
-        if (!$matchingRoute) {
-            $exception = new \Exception(sprintf('Uri with path "%s" could not be found.', $uri), 1426446160);
-            $exceptionHandler = set_exception_handler(null)[0];
-            $exceptionHandler->handleException($exception);
-            exit();
-        }
-        $request = new ActionRequest($parentHttpRequest);
-        foreach ($matchingRoute as $argumentName => $argumentValue) {
-            $request->setArgument($argumentName, $argumentValue);
-        }
-        $response = new Response($activeRequestHandler->getHttpResponse());
 
-        $this->securityContext->withoutAuthorizationChecks(function () use ($request, $response) {
-            $this->dispatcher->dispatch($request, $response);
-        });
+        $request = $this->bootstrap->getActiveRequestHandler()->getHttpRequest();
+        \assert($request instanceof ServerRequestInterface);
 
-        return $response->getContent();
+        $userAgent = $request->getHeader('User-Agent');
+        if (isset($userAgent[0]) && strncmp($userAgent[0], 'Flow', 4) === 0) {
+            // To prevent a request loop, requests from Flow will be ignored.
+            return '';
+        }
+
+        $uri = RequestInformationHelper::generateBaseUri($request)->withPath($path);
+        // By default, the ServerRequestFactory sets the User-Agent header to "Flow/" followed by the version branch.
+        $serverRequest = $this->serverRequestFactory->createServerRequest('GET', $uri);
+        $response = (new CurlEngine())->sendRequest($serverRequest);
+
+        if ($response->getStatusCode() === 404) {
+            throw new NoMatchingRouteException(sprintf('Uri with path "%s" could not be found.', $uri), 1426446160);
+        }
+
+        return $response->getBody()->getContents();
     }
 
     /**
