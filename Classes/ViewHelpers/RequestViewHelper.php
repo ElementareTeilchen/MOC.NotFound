@@ -3,16 +3,17 @@ namespace MOC\NotFound\ViewHelpers;
 
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Core\Bootstrap;
-use Neos\Flow\Http\Client\CurlEngine;
-use Neos\Flow\Http\Client\CurlEngineException;
+use Neos\Flow\Http\Component\ComponentChain;
+use Neos\Flow\Http\Component\ComponentContext;
 use Neos\Flow\Http\Helper\RequestInformationHelper;
+use Neos\Flow\Http\HttpRequestHandlerInterface;
 use Neos\Flow\Mvc\Exception\NoMatchingRouteException;
 use Neos\FluidAdaptor\Core\ViewHelper\AbstractViewHelper;
 use Neos\FluidAdaptor\Core\ViewHelper\Exception as ViewHelperException;
 use Neos\Http\Factories\ServerRequestFactory;
 use Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
 use Neos\Neos\Routing\FrontendNodeRoutePartHandler;
-use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 
 /**
  * Loads the content of a given URL
@@ -30,6 +31,12 @@ class RequestViewHelper extends AbstractViewHelper
      * @var ContentDimensionPresetSourceInterface
      */
     protected $contentDimensionPresetSource;
+
+    /**
+     * @Flow\Inject
+     * @var ResponseFactoryInterface
+     */
+    protected $responseFactory;
 
     /**
      * @Flow\Inject
@@ -57,16 +64,13 @@ class RequestViewHelper extends AbstractViewHelper
     /**
      * @return string
      * @throws \RuntimeException
-     * @throws CurlEngineException
      * @throws NoMatchingRouteException
      */
     public function render() : string
     {
-        $path = $this->arguments['path'];
-        $this->appendFirstUriPartIfValidDimension($path);
-
-        $request = $this->bootstrap->getActiveRequestHandler()->getHttpRequest();
-        \assert($request instanceof ServerRequestInterface);
+        $requestHandler = $this->bootstrap->getActiveRequestHandler();
+        \assert($requestHandler instanceof HttpRequestHandlerInterface);
+        $request = $requestHandler->getComponentContext()->getHttpRequest();
 
         $userAgent = $request->getHeader('User-Agent');
         if (isset($userAgent[0]) && strncmp($userAgent[0], 'Flow', 4) === 0) {
@@ -74,10 +78,20 @@ class RequestViewHelper extends AbstractViewHelper
             return '';
         }
 
+        $path = $this->arguments['path'];
+        $this->appendFirstUriPartIfValidDimension($path);
         $uri = RequestInformationHelper::generateBaseUri($request)->withPath($path);
-        // By default, the ServerRequestFactory sets the User-Agent header to "Flow/" followed by the version branch.
-        $serverRequest = $this->serverRequestFactory->createServerRequest('GET', $uri);
-        $response = (new CurlEngine())->sendRequest($serverRequest);
+
+        $componentChain = $this->objectManager->get(ComponentChain::class);
+        \assert($componentChain instanceof ComponentChain);
+        $componentChain->handle(
+            new ComponentContext(
+                // By default, the ServerRequestFactory sets the User-Agent header to "Flow/" followed by the version branch.
+                $this->serverRequestFactory->createServerRequest('GET', $uri),
+                $this->responseFactory->createResponse()
+            )
+        );
+        $response = $componentChain->getResponse();
 
         if ($response->getStatusCode() === 404) {
             throw new NoMatchingRouteException(sprintf('Uri with path "%s" could not be found.', $uri), 1426446160);

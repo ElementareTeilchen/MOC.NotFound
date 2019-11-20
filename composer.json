@@ -17,7 +17,6 @@
     ],
     "require": {
         "php": "^7.1",
-        "ext-curl": "*",
         "neos/neos": "^4.0 || ^5.0"
     },
     "autoload": {
